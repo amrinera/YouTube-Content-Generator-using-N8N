@@ -21,10 +21,15 @@ One-click generation – Press “Generate Content” to receive a full descript
 **Tech Stack**
 
 **Front end** 	React + Vite + Tailwind = CSS	Fast build and modern styling.
+
 **State / forms** 	React Hook Form	 = Handles validations and field state.
+
 **API requests**	rapidapi.com for youtube summary. https://rapidapi.com/rahilkhan224/api/youtube-video-summarizer-gpt-ai/playground 
+
 **Back end**	N8N
+
 **AI service**	Mistral or any llm of your choice. 
+
 
 
 **How the n8n workflow works — step by step**
