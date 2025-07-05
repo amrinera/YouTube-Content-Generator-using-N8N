@@ -1,0 +1,320 @@
+{
+  "name": "Bolt_flow_4.0_audience copy",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://youtube-video-summarizer-gpt-ai.p.rapidapi.com/api/v1/get-transcript-v2",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "video_id",
+              "value": "={{ $json.video_id }}"
+            },
+            {
+              "name": "platform",
+              "value": "youtube"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-rapidapi-host",
+              "value": "youtube-video-summarizer-gpt-ai.p.rapidapi.com"
+            },
+            {
+              "name": "x-rapidapi-key"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        20
+      ],
+      "id": "899bb78e-bfb7-461a-b6d7-4a2d9ba4235b",
+      "name": "HTTP Request3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4ec68ffc-32e5-4327-8af0-cd25410915df",
+              "name": "data.transcripts",
+              "value": "={{ $json.data.transcripts }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        480,
+        20
+      ],
+      "id": "39f1bde3-9f19-4703-b29c-6414f56a3217",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0].json;\n\n// ✅ Try 'en_auto' first\nlet transcriptChunks = input?.data?.transcripts?.en_auto?.custom;\n\n// ✅ If missing, fallback to 'hi_auto'\nif (!Array.isArray(transcriptChunks)) {\n  console.log(\"⚠️ en_auto missing, trying hi_auto...\");\n  transcriptChunks = input?.data?.transcripts?.hi_auto?.custom;\n}\n\nlet combinedTranscript = '';\n\nif (Array.isArray(transcriptChunks)) {\n  for (const chunk of transcriptChunks) {\n    const text = chunk?.text?.trim();\n    if (text && typeof text === 'string') {\n      combinedTranscript += text + ' ';\n    }\n  }\n  console.log(\"✅ Successfully combined transcript from available chunks.\");\n} else {\n  console.log(\"❌ No usable transcriptChunks found in en_auto or hi_auto.\");\n}\n\nreturn [\n  {\n    json: {\n      combinedTranscript: combinedTranscript.trim()\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        20
+      ],
+      "id": "c19676da-a67a-41ea-ab06-cc85a11bcec3",
+      "name": "combined transcripts3"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.map(item => {\n  const videoLink = item.json.body.video_url;\n  const outputLanguage = item.json.body.output_language || \"English\";\n  const toneOfVoice = item.json.body.tone_of_voice || \"Conversational\";\n  const audienceFocus = item.json.body.audience_focus || \"General\";\n  const descriptionLength = item.json.body.description_length || \"Standard\";\n\n  const match = videoLink.match(/(?:v=|\\/)([0-9A-Za-z_-]{11})/);\n  const videoId = match ? match[1] : null;\n\n  return {\n    json: {\n      video_url: videoLink,\n      video_id: videoId,\n      output_language: outputLanguage,\n      tone_of_voice: toneOfVoice,\n      audience_focus: audienceFocus,\n      description_length: descriptionLength\n    }\n  };\n});\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        40,
+        20
+      ],
+      "id": "fc3900dd-2c4a-4fba-9bab-ae3e991ac0d9",
+      "name": "separate video id3"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.cleanedOutput }}\n\nYou are an AI copywriter and viral headline expert.\nYour job is to craft **10 short, punchy, highly shareable video titles** for this video, optimized for YouTube, Instagram Reels, or TikTok.\n\n✅ **Instructions:**\n- Write exactly **10 unique titles**, numbered **1–10**\n- Each title must be 10–15 words max\n- Use strong hooks, curiosity, or emotional appeal\n- Do NOT include hashtags or extra text\n- Output must be a clean, plain list — do not add explanations\n\n",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        1660,
+        20
+      ],
+      "id": "f8cdbca2-6b70-4db0-83c3-a1925b3d0ea7",
+      "name": "AI Agent7"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Input: The AI output with \\n newlines\nconst rawOutput = $json[\"output\"];\n\n// Remove all newline characters and trim whitespace\nconst cleanedOutput = rawOutput.replace(/\\n/g, ' ').trim();\n\n// Return it as JSON so the next node can use it\nreturn [\n  {\n    json: {\n      cleanedOutput: cleanedOutput\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1420,
+        20
+      ],
+      "id": "b35e9e1f-0047-46cb-a15b-cb7570bf7479",
+      "name": "Code8"
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = items[0].json.output;\n\n// Split the string on line breaks\nconst titles = input.split('\\n').map(title => title.trim()).filter(title => title);\n\n// Add numbering\nconst numberedTitles = titles.map((title, index) => `${index + 1}. ${title}`);\n\n// Join back to a single string with newlines\nconst finalOutput = numberedTitles.join('\\n');\n\nreturn [\n  {\n    json: {\n      formattedTitles: finalOutput\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2100,
+        20
+      ],
+      "id": "e2e72525-749b-4c08-9055-ac601393523d",
+      "name": "Code9"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.3,
+      "position": [
+        2600,
+        20
+      ],
+      "id": "6c567c1f-ed9f-4203-a23c-a1c180111b22",
+      "name": "Respond to Webhook2"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      description: $node[\"seo description\"].json.output, // ✅ Correct: pulls from AI Agent2 output\n      titles: items[0].json.formattedTitles.split('\\n') // ✅ From current Code3 output\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2340,
+        20
+      ],
+      "id": "07a64a90-a5a0-46ef-a750-382370f17076",
+      "name": "Code10"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.combinedTranscript }}",
+        "options": {
+          "systemMessage": "=YOU ARE AGENT : THE WORLD’S LEADING EXPERT IN YOUTUBE VIDEO DESCRIPTIONS & SEO META TAGS\n\nInternationally recognized for crafting high-converting, algorithm-optimized YouTube video descriptions, your job is to turn summarized transcripts or video content into descriptions that boost discoverability, increase CTR, and keep viewers engaged. You also generate relevant SEO meta tags and hashtags that help the video rank better in search.\n\n✅ INSTRUCTIONS\nWrite ALL output — description, SEO tags, and hashtags — in {{ $('Webhook2').item.json.body.output_language }} ONLY.\nUse a {{ $('Webhook2').item.json.body.tone_of_voice }} tone of voice for the entire description and titles.\nIf {{ $('Webhook2').item.json.body.output_language }} is not English, do not include any English words except unavoidable brand names.\n**Tailor the hook, style, and keywords for an audience of {{ $('Webhook2').item.json.body.audience_focus }}.**  \nEnsure the writing style, vocabulary, and CTA match what {{ $('Webhook2').item.json.body.audience_focus }} will respond to best.\nAdjust the overall length as per {{ $('Webhook2').item.json.body.description_length }}:\n- Short: 8-12 sentences  \n- Standard: 12-16 sentences  \n- Long: 16-20 sentences, with extra detail and keywords\n\nUse a compelling hook in the first 1–2 lines — this is what appears above the fold and needs to grab attention immediately.\n\nSummarize the video content clearly and naturally in 3–6 sentences — keep it audience-friendly and informative.\n\nInclude CTA lines like “Subscribe,” “Watch next,” “Join the community,” etc.\n\nInclude 2 blocks at the end:\n- SEO Meta Tags (comma-separated keywords)\n- Hashtags (in YouTube-friendly format but do NOT write the word 'hashtags')\n\n🧠 CHAIN OF THOUGHTS\nANALYZE THE VIDEO SUMMARY OR TRANSCRIPT\n\nUnderstand the topic, tone, and value for the viewer.\n\nIdentify keywords and content highlights.\n\nCRAFT A DESCRIPTION\n\nHook first: a powerful sentence or relatable question.\n\nOverview: what the viewer will learn or gain.\n\nContent breakdown: any notable moments or segments.\n\nEngagement prompts: ask for likes, subs, or comments.\n\nSEO OPTIMIZATION\n\nUse relevant, high-ranking keywords naturally.\n\nCreate a separate list of SEO tags to improve search indexing.\n\nInclude niche-specific hashtags and trends.\n\nFORMAT FOR YOUTUBE\n\nMake sure the first 2 lines are click-worthy.\n\nUse line breaks to improve readability.\n\nPlace SEO tags and hashtags at the end, not in the main paragraph.\n\n❌ WHAT NOT TO DO\nDon’t start with boring or vague intros like “In this video…”\n\nDon’t skip SEO tags, hashtags, or CTAs.\n\nDon’t stuff keywords unnaturally — keep it human-readable.\n\nDon’t write bulky, unstructured paragraphs.\n\nDon’t reuse the same description format every time — customize!\n\n💡 FEW-SHOT EXAMPLE\n🎥 Input Summary:\n\"A 10-minute video explaining how to use ChatGPT with Airtable and automate workflows using N8N. It includes a live demo, error handling tips, and integration examples for business use.\"\n\n📄 Output Description (Example):\nWant to automate your business using ChatGPT? This video shows you EXACTLY how to do it — step-by-step! 💡\n\nIn this quick tutorial, you'll learn how to:\n\nConnect ChatGPT to Airtable\n\nAutomate workflows using N8N\n\nHandle errors like a pro\n\nUse real business case examples to scale your productivity\n\n📌 Whether you're a no-code beginner or a workflow wizard, this guide breaks it down in a simple, clear way. Watch till the end for advanced bonus tips!\n\n👍 Like, Share, and Subscribe for weekly AI and automation hacks.\n🔔 Turn on the bell to stay ahead of the game.\n\n🔍 SEO Tags:\nchatgpt automation, n8n tutorial, airtable workflow, ai business tools, openai automation, no code automations, chatgpt n8n integration\n\n#️⃣ Hashtags:\n#ChatGPT #Airtable #N8N #AutomationTutorial #NoCodeAI #WorkflowHacks\n",
+          "maxIterations": 10
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        920,
+        20
+      ],
+      "id": "c24dc53f-9932-4c15-a4e1-8e108c467500",
+      "name": "seo description"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatMistralCloud",
+      "typeVersion": 1,
+      "position": [
+        1140,
+        420
+      ],
+      "id": "985c76d1-e322-4d29-9d3e-31e7d3b0b7ec",
+      "name": "Mistral Cloud Chat Model"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "HTTP Request3": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "combined transcripts3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "combined transcripts3": {
+      "main": [
+        [
+          {
+            "node": "seo description",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "separate video id3": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent7": {
+      "main": [
+        [
+          {
+            "node": "Code9",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code8": {
+      "main": [
+        [
+          {
+            "node": "AI Agent7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code9": {
+      "main": [
+        [
+          {
+            "node": "Code10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code10": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "seo description": {
+      "main": [
+        [
+          {
+            "node": "Code8",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mistral Cloud Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "seo description",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "AI Agent7",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "d4d72fdb-ed70-4295-8f34-f474c3147aae",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "14f11daac703f5ff3c6d9469ace7e76f1f54572da2c40ae039de2abb3596d024"
+  },
+  "id": "2b00R1nksKLcsAhz",
+  "tags": []
+}
